@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Toolbox-API/Toolbox-API.csproj" />
+  <Project Path="Toolbox-Library/Toolbox-Library.csproj" />
+</Solution>

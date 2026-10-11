@@ -30,7 +30,6 @@ artifacts/
 
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
-
 # NuGet Packages
 *.nupkg
 # NuGet Symbol Packages
@@ -38,7 +37,8 @@ ScaffoldingReadMe.txt
 
 # dotenv environment variables file
 .env
-
+appsettings.*.json
+appsettings.json
 # Others
 ~$*
 *~
@@ -55,3 +55,5 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+.vs/
