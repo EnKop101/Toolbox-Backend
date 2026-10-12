@@ -6,7 +6,9 @@ using Toolbox_Library.Enums;
 
 namespace Toolbox_Library.DTO
 {
-    public record UserDTO(Guid Id, string Username, UserRole Role, DateOnly DateCreated);
+    public record UserDTO(Guid Id, string Username, UserRole Role, DateOnly DateCreated, DateOnly LastUpdated);
     public record LoginDTO(string Username, string Password);
-    public record CreateUserDTO(Guid Id, string Username, string Password, UserRole Role);
+    public record CreateUserDTO(string Username, string Password, UserRole Role);
+    public record UpdateUserDTO(Guid Id, string Username, string Password, UserRole Role);
+    public record ChangePassword(Guid Id, string Username, string OldPassword, string NewPassword);
 }

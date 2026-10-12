@@ -20,6 +20,7 @@ namespace Toolbox_Library.Repositories
             _connection = redisDb;
             _redisDb = _connection.GetDatabase();
         }
+
         public async Task<bool> AddSessionToDB(string key, string sessionValue, TimeSpan ttl)
         {
             // Try to create the key only if it doesn't already exist

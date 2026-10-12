@@ -14,17 +14,16 @@ namespace Toolbox_API;
 
 public class Program
 {
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "<Pending>")] // Supress warning when decrypting encryption file.
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Add services to the container.
-
         builder.Services.AddControllers();
-        // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.AddOpenApi();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
+
 
         string saltFileLocation = builder.Configuration["Salt"] ?? throw new Exception("Salt file location is not configured");
         string encryptionKeyFileLocation = builder.Configuration["EncryptionKey"] ?? throw new Exception("Encryption key file location is not configured");
@@ -50,9 +49,7 @@ public class Program
         if (decryptedSaltFileBytes == null || decryptedEncryptionFileBytes == null) throw new Exception("Something went wrong during decryption of file bytes");
 
         string saltKey = Encoding.UTF8.GetString(decryptedSaltFileBytes);
-        string encryptionKey = Encoding.UTF8.GetString(decryptedEncryptionFileBytes);
 
-        builder.Services.AddSingleton<IEncryptionHandler>(sp => new EncryptionHandler(saltKey, encryptionKey));
 
         string redisConnection = builder.Configuration.GetConnectionString("RedisConnection") ?? throw new Exception("No redis connection string!");
         string postgresConnection = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new Exception("No Postgres connection string!");
@@ -66,7 +63,7 @@ public class Program
         });
 
         builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-        builder.Services.AddScoped<IEncryptionHandler, EncryptionHandler>();
+        builder.Services.AddSingleton<IEncryptionHandler>(sp => new EncryptionHandler(saltKey, decryptedEncryptionFileBytes));
 
         builder.Services.AddScoped<IUserService, UserService>();
 

@@ -10,94 +10,73 @@ namespace Toolbox_Library.Utilities.Encryption
     public class EncryptionHandler : IEncryptionHandler
     {
         private string _SALT {  get; set; }
-        private string _EncryptionKey {  get; set; }
 
-        public EncryptionHandler(string saltKey, string encryptionKey)
+        private const int NonceSize = 12; // GCM's IV
+        private const int TagSize = 16; // Authentication tag
+        private byte[] _EncryptionKey {  get; set; }
+
+        public EncryptionHandler(string saltKey, byte[] keyBytes)
         {
             _SALT = saltKey;
-            _EncryptionKey = encryptionKey;
-        }
 
-        public async Task<string> DecryptString(string input)
-        {
-            // Convert the Base64 encrypted string back into raw bytes
-            byte[] fullCipher = Convert.FromBase64String(input);
-
-            using (Aes aes = Aes.Create())
+            try
             {
-                // Generate the AES key from the secret encryption key using SHA256
-                using (var sha256 = SHA256.Create())
-                {
-                    byte[] keyBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(_EncryptionKey));
-                    aes.Key = keyBytes;
-                }
-
-                // Extract the Initialization Vector (IV) from the start of the encrypted data
-                byte[] iv = new byte[aes.BlockSize / 8];
-                byte[] cipher = new byte[fullCipher.Length - iv.Length];
-
-                Array.Copy(fullCipher, iv, iv.Length);                 // Copy IV
-                Array.Copy(fullCipher, iv.Length, cipher, 0, cipher.Length); // Copy actual encrypted data
-
-                // Assign the extracted IV to AES
-                aes.IV = iv;
-
-                // Create the decryptor using the AES key and IV
-                using (var decryptor = aes.CreateDecryptor(aes.Key, aes.IV))
-                using (var ms = new MemoryStream(cipher))              // Load encrypted data into memory
-                using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read)) // Decrypt stream
-                using (var sr = new StreamReader(cs))                  // Read decrypted data as text
-                {
-                    // Return the fully decrypted string
-                    return await sr.ReadToEndAsync();
-                }
+                // Hash the plaintext string and ensures its exactly 32 bytes.
+                _EncryptionKey = SHA256.HashData(keyBytes);
+            }
+            finally
+            {
+                // Clear the plaintext key string bytes from memory
+                CryptographicOperations.ZeroMemory(keyBytes);
             }
         }
 
         public async Task<string> EncryptString(string input)
         {
-            // Create a new AES encryption instance
-            using (Aes aes = Aes.Create())
-            {
-                // Derive a fixed encryption key from the secret key using SHA-256
-                using (var sha256 = SHA256.Create())
-                {
-                    // Convert the secret key into a 256-bit hash to use as the AES key
-                    byte[] keyBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(_EncryptionKey));
-                    aes.Key = keyBytes;
-                }
+            byte[] plain = Encoding.UTF8.GetBytes(input);
+            byte[] output = new byte[NonceSize + plain.Length + TagSize];
 
-                // Generate a unique IV for this encryption operation
-                aes.GenerateIV(); // random IV for each encryption
+            Span<byte> nonce = output.AsSpan(0, NonceSize);
+            Span<byte> cipher = output.AsSpan(NonceSize, plain.Length);
+            Span<byte> tag = output.AsSpan(NonceSize + plain.Length, TagSize);
 
-                // Create an encryptor using the derived key and generated IV
-                using (var encryptor = aes.CreateEncryptor(aes.Key, aes.IV))
-                using (var ms = new MemoryStream())
-                {
-                    // Prepend the IV to the encrypted output so it can be used during decryption
-                    await ms.WriteAsync(aes.IV, 0, aes.IV.Length);
+            // Random nonce for each encryption (same role as GenerateIV)
+            RandomNumberGenerator.Fill(nonce);
 
-                    // Create a CryptoStream to handle the encryption process
-                    using var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write);
+            using var aes = new AesGcm(_EncryptionKey, TagSize);
+            aes.Encrypt(nonce, plain, cipher, tag);
 
-                    // Write the plaintext into the CryptoStream, which encrypts it
-                    using (var sw = new StreamWriter(cs))
-                    {
-                        sw.Write(input);
-                    }
-
-                    // Convert the encrypted byte array (including IV) into a Base64 string and return it
-                    return Convert.ToBase64String(ms.ToArray());
-                }
-            }
+            // Stored layout: [nonce | ciphertext | tag]
+            return Convert.ToBase64String(output);
         }
 
-        public Task<string> HashString(string input)
+        public async Task<string> DecryptString(string encryptedInput)
+        {
+            byte[] input = Convert.FromBase64String(encryptedInput);
+            if (input.Length < NonceSize + TagSize)
+                throw new CryptographicException("Invalid encrypted data.");
+
+            int cipherLen = input.Length - NonceSize - TagSize;
+            ReadOnlySpan<byte> nonce = input.AsSpan(0, NonceSize);
+            ReadOnlySpan<byte> cipher = input.AsSpan(NonceSize, cipherLen);
+            ReadOnlySpan<byte> tag = input.AsSpan(NonceSize + cipherLen, TagSize);
+
+            byte[] plain = new byte[cipherLen];
+            using var aes = new AesGcm(_EncryptionKey, TagSize);
+
+            // Throws AuthenticationTagMismatchException if the data was
+            // tampered with or the wrong key is used
+            aes.Decrypt(nonce, cipher, tag, plain);
+
+            return Encoding.UTF8.GetString(plain);
+        }
+
+        public Task<string> Sha256HashString(string input)
         {
             using (var sha256 = SHA256.Create())
             {
                 // Convert string to bytes
-                byte[] bytes = Encoding.UTF8.GetBytes(_SALT + input + _SALT);
+                byte[] bytes = Encoding.UTF8.GetBytes(input + _SALT);
 
                 // Compute the hash
                 byte[] hashBytes = sha256.ComputeHash(bytes);
@@ -109,6 +88,11 @@ namespace Toolbox_Library.Utilities.Encryption
 
                 return Task.FromResult(sb.ToString());
             }
+        }
+
+        public Task<string> Argon2HashString(string input)
+        {
+            throw new NotImplementedException();
         }
     }
 }

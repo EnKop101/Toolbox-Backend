@@ -10,6 +10,7 @@ namespace Toolbox_Library.Utilities.Encryption.Interface
 
         public Task<string> EncryptString(string input);
 
-        public Task<string> HashString(string input);
+        public Task<string> Sha256HashString(string input);
+        public Task<string> Argon2HashString(string input);
     }
 }

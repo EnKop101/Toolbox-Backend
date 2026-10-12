@@ -12,7 +12,8 @@ namespace Toolbox_Library.Models
         internal string Password { get; set; }
         internal UserRole Role { get; set; }
         internal string DisplayName { get; set; }
-        internal DateOnly DateCreated { get; set; }
         internal UserStatus Status { get; set; }
+        internal DateOnly DateCreated { get; set; }
+        internal DateOnly LastUpdated { get; set; }
     }
 }
