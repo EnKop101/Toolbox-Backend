@@ -62,9 +62,12 @@ public class Program
             return ConnectionMultiplexer.Connect(redisConnection);
         });
 
-        builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
         builder.Services.AddSingleton<IEncryptionHandler>(sp => new EncryptionHandler(saltKey, decryptedEncryptionFileBytes));
 
+        builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+        builder.Services.AddScoped<IRedisRepository, RedisRepository>();
+
+        builder.Services.AddScoped<ISessionService, SessionService>();
         builder.Services.AddScoped<IUserService, UserService>();
 
         var app = builder.Build();

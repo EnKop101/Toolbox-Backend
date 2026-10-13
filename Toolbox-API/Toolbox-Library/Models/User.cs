@@ -5,9 +5,9 @@ using Toolbox_Library.Enums;
 
 namespace Toolbox_Library.Models
 {
-    internal class User
+    public class User
     {
-        internal Guid Id { get; set; }
+        internal Guid Id { get; set; } = Guid.NewGuid();
         internal string Username { get; set; }
         internal string Password { get; set; }
         internal UserRole Role { get; set; }
