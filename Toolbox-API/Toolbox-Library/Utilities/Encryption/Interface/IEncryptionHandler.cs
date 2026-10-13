@@ -12,5 +12,6 @@ namespace Toolbox_Library.Utilities.Encryption.Interface
 
         public Task<string> Sha256HashString(string input);
         public Task<string> Argon2HashString(string input);
+        public Task<bool> VerifyArgonHashedInput(string input, string storedHash);
     }
 }

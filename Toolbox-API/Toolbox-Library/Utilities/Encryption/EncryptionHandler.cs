@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Konscious.Security.Cryptography;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
@@ -10,11 +11,17 @@ namespace Toolbox_Library.Utilities.Encryption
     public class EncryptionHandler : IEncryptionHandler
     {
         private string _SALT {  get; set; }
+        private const int _memorySizeKb = 65536;
+        private const int _iterations = 7;
+        private const int _parallelism = 4;
+        private const int _hashLength = 32; // Bytes
+        private const int _saltLength = 16;
 
+        #region Encryption Properties
         private const int NonceSize = 12; // GCM's IV
         private const int TagSize = 16; // Authentication tag
         private byte[] _EncryptionKey {  get; set; }
-
+        #endregion
         public EncryptionHandler(string saltKey, byte[] keyBytes)
         {
             _SALT = saltKey;
@@ -90,9 +97,56 @@ namespace Toolbox_Library.Utilities.Encryption
             }
         }
 
-        public Task<string> Argon2HashString(string input)
+        public async Task<string> Argon2HashString(string input)
         {
-            throw new NotImplementedException();
+            byte[] saltBytes = RandomNumberGenerator.GetBytes(_saltLength);
+            if (saltBytes.Length < 8) throw new ArgumentException("Salt must be at least 8 bytes");
+
+            byte[] hash = await ComputeHash(input, saltBytes, _memorySizeKb, _iterations, _parallelism, _hashLength);
+
+            return $"$argon2id$v=19$m={_memorySizeKb},t={_iterations},p={_parallelism}" +
+                    $"${Convert.ToBase64String(saltBytes)}${Convert.ToBase64String(hash)}";
+
+        }
+
+        public async Task<bool> VerifyArgonHashedInput(string input, string storedHash)
+        {
+            // Expected parts: "", "argon2id", "v=19", "m=..,t=..,p=..", salt, hash
+            string[] parts = storedHash.Split('$');
+            if (parts.Length != 6 || parts[1] != "argon2id") return false;
+
+            int m = 0, t = 0, p = 0;
+            foreach (string kv in parts[3].Split(','))
+            {
+                string[] pair = kv.Split('=');
+                int value = int.Parse(pair[1]);
+                switch (pair[0])
+                {
+                    case "m": m = value; break;
+                    case "t": t = value; break;
+                    case "p": p = value; break;
+                }
+            }
+
+            byte[] saltBytes = Convert.FromBase64String(parts[4]);
+            byte[] expected = Convert.FromBase64String(parts[5]);
+            byte[] actual = await ComputeHash(input, saltBytes, m, t, p, expected.Length);
+
+            // Constant-time comparison to avoid timing attacks.
+            return CryptographicOperations.FixedTimeEquals(actual, expected);
+        }
+
+
+        private static async Task<byte[]> ComputeHash(string password, byte[] salt, int memoryKb, int iterations, int parallelism, int length)
+        {
+            using var argon2 = new Argon2id(Encoding.UTF8.GetBytes(password))
+            {
+                Salt = salt,
+                MemorySize = memoryKb,
+                Iterations = iterations,
+                DegreeOfParallelism = parallelism,
+            };
+            return await argon2.GetBytesAsync(length);
         }
     }
 }
