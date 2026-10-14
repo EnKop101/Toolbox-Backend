@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using Toolbox_Library.DTO;
 using Toolbox_Library.Enums;
 using Toolbox_Library.Models;
 using Toolbox_Library.Repositories.Interfaces;
 using Toolbox_Library.Services.Interfaces;
+using Toolbox_Library.Utilities;
 using Toolbox_Library.Utilities.Encryption.Interface;
 using static Toolbox_Library.Utilities.Response.HttpResponseException;
 
@@ -27,7 +29,7 @@ namespace Toolbox_Library.Services
             _sessionService = sessionService;
         }
 
-        public async Task Login(LoginDTO dto)
+        public async Task<string> Login(LoginDTO dto)
         {
             string unauthorizedMessage = "Username or Password was invalid!";
 
@@ -41,7 +43,18 @@ namespace Toolbox_Library.Services
             if (passwordMatch)
             {
                 // Make a session etc.
-                return;
+                SessionData sessionData = new(user.Id.ToString(), user.Role);
+                string sessionValue = JsonSerializer.Serialize(sessionData);
+
+                string sessionKey = await _sessionService.AddSessionToDB(sessionValue);
+                if (string.IsNullOrEmpty(sessionKey))
+                {
+                    return sessionKey;
+                }
+                else
+                {
+                    throw new InternalErrorException("Something went wrong making a session key!");
+                }
             }
             else
             {

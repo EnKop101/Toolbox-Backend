@@ -10,7 +10,7 @@ namespace Toolbox_Library.Repositories.Interfaces
     {
         public Task<bool> AddSessionToDB(string key, string sessionValue, TimeSpan ttl);
 
-        public Task<SessionData> GetSessionDataFromKey(string key);
+        public Task<string> GetSessionDataFromKey(string key);
 
         public Task<bool> DeleteSessionFromDB(string sessionKey);
 

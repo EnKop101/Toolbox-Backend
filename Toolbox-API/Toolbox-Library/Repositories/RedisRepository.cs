@@ -32,7 +32,7 @@ namespace Toolbox_Library.Repositories
             );
         }
 
-        public async Task<SessionData> GetSessionDataFromKey(string sessionKey)
+        public async Task<string> GetSessionDataFromKey(string sessionKey)
         {
             // Get the value from the database using the key.
             RedisValue value = await _redisDb.StringGetAsync($"session:{sessionKey}");
@@ -45,12 +45,9 @@ namespace Toolbox_Library.Repositories
             else if (value.HasValue)
             {
                 // If the value is not null or empty deserialize the value string back into a SessionData class.
-                SessionData? session = JsonSerializer.Deserialize<SessionData>((string)value!);
-                if (session != null) return session;
-                else throw new NoContentException("Session key exists but could not deserialize value!");
+                return (string)value!;
             }
             else throw new NoContentException("Session key exists but no value exists!");
-
         }
 
         public async Task<bool> DeleteSessionFromDB(string sessionKey)
@@ -60,7 +57,7 @@ namespace Toolbox_Library.Repositories
 
         public async Task<bool> ValidateSession(string sessionKey)
         {
-            return await _redisDb.KeyExistsAsync($"session:{sessionKey}");
+            return await _redisDb.KeyExistsAsync(sessionKey);
         }
 
         public async Task DeleteAllSessionsFromUserId(string userId)

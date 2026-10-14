@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc.Filters;
 using Toolbox_Library.Enums;
 using Toolbox_Library.Repositories.Interfaces;
+using Toolbox_Library.Services.Interfaces;
 using Toolbox_Library.Utilities;
 using Toolbox_Library.Utilities.Response;
 
@@ -32,11 +33,11 @@ namespace Toolbox_API.Extension
                 try
                 {
                     // Make a Repository instance.
-                    IRedisRepository redisRepository = context.HttpContext.RequestServices.GetRequiredService<IRedisRepository>();
+                    ISessionService sessionService = context.HttpContext.RequestServices.GetRequiredService<ISessionService>();
 
                     // Try to extract the data from the Redis database that has the key.
                     sessionKey = sessionKeyFromCookie;
-                    SessionData sessionData = await redisRepository.GetSessionDataFromKey(sessionKey);
+                    SessionData sessionData = await sessionService.GetSessionDataFromKey(sessionKey);
 
                     // Check if the if the Role is null or empty which means any role is allowed.
                     // If both conditions are false then check the specific role matches the role extracted from the session key

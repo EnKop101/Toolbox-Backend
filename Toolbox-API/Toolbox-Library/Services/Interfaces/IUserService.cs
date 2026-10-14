@@ -12,7 +12,7 @@ namespace Toolbox_Library.Services.Interfaces
 {
     public interface IUserService
     {
-        public Task Login(LoginDTO dto);
+        public Task<string> Login(LoginDTO dto);
         public Task Add(CreateUserDTO dto);
         public Task Delete(Guid targetId, UserRole currentUserRole);
         public Task UpdateUser(UpdateUserDTO dto, Guid currentUserId);

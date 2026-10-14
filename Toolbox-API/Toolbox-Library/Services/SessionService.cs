@@ -3,10 +3,13 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Toolbox_Library.Repositories.Interfaces;
 using Toolbox_Library.Services.Interfaces;
 using Toolbox_Library.Utilities;
 using Toolbox_Library.Utilities.Encryption.Interface;
+using static System.Collections.Specialized.BitVector32;
+using static Toolbox_Library.Utilities.Response.HttpResponseException;
 
 namespace Toolbox_Library.Services
 {
@@ -21,12 +24,21 @@ namespace Toolbox_Library.Services
             _encryptionHandler = encryptionHandler;
         }
 
-        public async Task<bool> AddSessionToDB(string sessionValue)
+        public async Task<string> AddSessionToDB(string sessionValue)
         {
-            string rawKey = SessionIdGenerator();
+            bool duplicateKey = true;
+            string key = "";
+            do
+            {
+                string sessionKey = SessionIdGenerator();
+                key = $"session:{sessionKey}";
+                duplicateKey = await ValidateSession(key);
+            } while (duplicateKey);
+
             string encryptedValue = await _encryptionHandler.EncryptString(sessionValue);
             TimeSpan ttl = TimeSpan.FromDays(3);
-            return await _redisRepository.AddSessionToDB(rawKey, encryptedValue, ttl);
+            if (await _redisRepository.AddSessionToDB(key, encryptedValue, ttl)) return key;
+            else throw new InternalErrorException("Something went wrong when trying to create session");
         }
 
         public Task DeleteAllSessionsFromUserId(string inputValue)
@@ -34,19 +46,25 @@ namespace Toolbox_Library.Services
             throw new NotImplementedException();
         }
 
-        public Task<bool> DeleteSessionFromDB(string sessionKey)
+        public async Task<bool> DeleteSessionFromDB(string sessionKey)
         {
-            throw new NotImplementedException();
+            return await _redisRepository.DeleteSessionFromDB(sessionKey);
         }
 
-        public Task<SessionData> GetSessionDataFromKey(string key)
+        public async Task<SessionData> GetSessionDataFromKey(string key)
         {
-            throw new NotImplementedException();
+            string encryptedSessionValue = await _redisRepository.GetSessionDataFromKey(key);
+            string unencryptedSessionValue = await _encryptionHandler.DecryptString(encryptedSessionValue);
+
+            SessionData sessionData = JsonSerializer.Deserialize<SessionData>(unencryptedSessionValue)
+                ?? throw new NoContentException("Session key exists but could not deserialize value!");
+
+            return sessionData;
         }
 
-        public Task<bool> ValidateSession(string sessionKey)
+        public async Task<bool> ValidateSession(string sessionKey)
         {
-            throw new NotImplementedException();
+            return await _redisRepository.ValidateSession(sessionKey);
         }
 
         private string SessionIdGenerator()

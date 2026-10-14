@@ -13,8 +13,7 @@ namespace Toolbox_Library.Services.Interfaces
         /// <param name="key">The Session Key</param>
         /// <param name="sessionValue">The value which is a Json Serialized string of the data.</param>
         /// <param name="ttl">The Time to Live flag.</param>
-        /// <returns>True or False if the action was completed successfully</returns>
-        public Task<bool> AddSessionToDB(string key, string sessionValue, TimeSpan ttl);
+        public Task<string> AddSessionToDB(string sessionValue);
 
         /// <summary>
         /// Retrieves the session value from a session key and deserializes the value back into a class
