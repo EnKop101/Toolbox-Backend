@@ -26,6 +26,29 @@ namespace Toolbox_Library.Services
             _encryptionHandler = encryptionHandler;
             _sessionService = sessionService;
         }
+
+        public async Task Login(LoginDTO dto)
+        {
+            string unauthorizedMessage = "Username or Password was invalid!";
+
+            string usernameTolower = dto.Username.ToLower();
+            string passwordTolower = dto.Password.ToLower();
+
+            User user = await _userGenericRepository.Get(u => u.Username.ToLower() ==  usernameTolower)
+                ?? throw new UnauthorizedException(unauthorizedMessage);
+
+            bool passwordMatch = await _encryptionHandler.VerifyArgonHashedInput(passwordTolower, user.Password);
+            if (passwordMatch)
+            {
+                // Make a session etc.
+                return;
+            }
+            else
+            {
+                throw new UnauthorizedException(unauthorizedMessage);
+            }
+        }
+
         public async Task Add(CreateUserDTO dto)
         {
             string usernameToLower = dto.Username.ToLower();

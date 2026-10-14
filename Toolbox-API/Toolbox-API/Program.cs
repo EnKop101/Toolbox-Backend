@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.RateLimiting;
 using Toolbox_Library.Context;
 using Toolbox_Library.Repositories;
 using Toolbox_Library.Repositories.Interfaces;
@@ -23,7 +24,6 @@ public class Program
         builder.Services.AddOpenApi();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
-
 
         string saltFileLocation = builder.Configuration["Salt"] ?? throw new Exception("Salt file location is not configured");
         string encryptionKeyFileLocation = builder.Configuration["EncryptionKey"] ?? throw new Exception("Encryption key file location is not configured");
@@ -70,6 +70,20 @@ public class Program
         builder.Services.AddScoped<ISessionService, SessionService>();
         builder.Services.AddScoped<IUserService, UserService>();
 
+        builder.Services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.AddPolicy("login", httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 5,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    }));
+        });
+
         var app = builder.Build();
 
         // Configure the HTTP request pipeline.
@@ -80,6 +94,7 @@ public class Program
             app.MapGet("/", () => Results.Redirect("/swagger"));
             app.MapOpenApi();
         }
+
 
         app.UseHttpsRedirection();
 
