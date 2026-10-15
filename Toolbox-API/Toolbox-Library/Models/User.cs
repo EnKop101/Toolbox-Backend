@@ -7,13 +7,13 @@ namespace Toolbox_Library.Models
 {
     public class User
     {
-        internal Guid Id { get; set; } = Guid.NewGuid();
-        internal string Username { get; set; }
-        internal string Password { get; set; }
-        internal UserRole Role { get; set; }
-        internal string DisplayName { get; set; }
-        internal UserStatus Status { get; set; }
-        internal DateOnly DateCreated { get; set; }
-        internal DateOnly LastUpdated { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public string Username { get; set; }
+        public string Password { get; set; }
+        public UserRole Role { get; set; } = UserRole.User;
+        public string DisplayName { get; set; }
+        public UserStatus Status { get; set; } = UserStatus.Pending;
+        public DateOnly DateCreated { get; set; }
+        public DateOnly LastUpdated { get; set; }
     }
 }

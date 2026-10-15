@@ -6,6 +6,9 @@ using Toolbox_Library.Models;
 
 namespace Toolbox_Library.Context
 {
+    // Add-Migration InitDb -Context ToolboxDbContext -OutputDir "Migrations/Prod"
+    // update-database
+
     public class ToolboxDbContext(DbContextOptions<ToolboxDbContext> options) : DbContext(options)
     {
         internal DbSet<User> Users => Set<User>();
