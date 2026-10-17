@@ -13,10 +13,10 @@ namespace Toolbox_Library.Services.Interfaces
     public interface IUserService
     {
         public Task<string> Login(LoginDTO dto);
-        public Task Add(CreateUserDTO dto);
-        public Task Delete(Guid targetId, UserRole currentUserRole);
-        public Task UpdateUser(UpdateUserDTO dto, Guid currentUserId);
-        public Task ChangePassword(ChangePassword dto, Guid currentUserId);
+        public Task<bool> Add(CreateUserDTO dto);
+        public Task<bool> Delete(Guid targetId, UserRole currentUserRole);
+        public Task<bool> UpdateUser(UpdateUserDTO dto, Guid currentUserId);
+        public Task<bool> ChangePassword(ChangePassword dto, Guid currentUserId);
         public Task<UserDTO> Get(Guid targetId, Guid currenUserId, UserRole currentUserRole);
         public Task<ICollection<UserDTO>> GetAllUsers();
     }

@@ -34,20 +34,28 @@ namespace Toolbox_Library.Services
             string unauthorizedMessage = "Username or Password was invalid!";
 
             string usernameTolower = dto.Username.ToLower();
-            string passwordTolower = dto.Password.ToLower();
 
             User user = await _userGenericRepository.Get(u => u.Username.ToLower() ==  usernameTolower)
                 ?? throw new UnauthorizedException(unauthorizedMessage);
 
-            bool passwordMatch = await _encryptionHandler.VerifyArgonHashedInput(passwordTolower, user.Password);
+            bool passwordMatch = await _encryptionHandler.VerifyArgonHashedInput(dto.Password, user.Password);
             if (passwordMatch)
             {
+                if (user.Status == UserStatus.Pending )
+                {
+                    throw new UnauthorizedException($"{user.Username} is currently still pending.");
+                }
+                else if (user.Status == UserStatus.Disabled)
+                {
+                    throw new UnauthorizedException($"{user.Username} is disabled.");
+                }
+
                 // Make a session etc.
                 SessionData sessionData = new(user.Id.ToString(), user.Role);
                 string sessionValue = JsonSerializer.Serialize(sessionData);
 
                 string sessionKey = await _sessionService.AddSessionToDB(sessionValue);
-                if (string.IsNullOrEmpty(sessionKey))
+                if (!string.IsNullOrEmpty(sessionKey))
                 {
                     return sessionKey;
                 }
@@ -62,18 +70,17 @@ namespace Toolbox_Library.Services
             }
         }
 
-        public async Task Add(CreateUserDTO dto)
+        public async Task<bool> Add(CreateUserDTO dto)
         {
             string usernameToLower = dto.Username.ToLower();
-            string passwordToLower = dto.Password.ToLower();
 
-            if (!await _userGenericRepository.DoesValueExist(u => u.Username.ToLower() == usernameToLower))
+            if (await _userGenericRepository.DoesValueExist(u => u.Username.ToLower() == usernameToLower))
             {
                 throw new ConflictException("Username is already taken");
             }
             else
             {
-                string hashedPassword = await _encryptionHandler.Argon2HashString(passwordToLower);
+                string hashedPassword = await _encryptionHandler.Argon2HashString(dto.Password);
                 User user = new User
                 {
                     Username = usernameToLower,
@@ -83,32 +90,44 @@ namespace Toolbox_Library.Services
                     LastUpdated = DateOnly.FromDateTime(DateTime.Now)
                 };
 
-                await _userGenericRepository.Add(user);
-                return;
+                return await _userGenericRepository.Add(user);
             }
         }
 
-        public Task ChangePassword(ChangePassword dto, Guid currentUserId)
+        public Task<bool> ChangePassword(ChangePassword dto, Guid currentUserId)
         {
             throw new NotImplementedException();
         }
 
-        public Task Delete(Guid targetId, UserRole currentUserRole)
+        public async Task<bool> Delete(Guid targetId, UserRole currentUserRole)
         {
-            throw new NotImplementedException();
+            User user = await _userGenericRepository.Get(u => u.Id == targetId)
+                ?? throw new NotFoundException($"User with Id \"{targetId}\" does not exist.");
+
+            if (user.Role == UserRole.Owner) throw new UnauthorizedException("You cannot delete the owners account.");
+            else if (user.Role == UserRole.Admin && currentUserRole != UserRole.Owner) throw new UnauthorizedException("Only the Owner can delete an Admin account.");
+            else return await _userGenericRepository.Delete(u => u.Id == user.Id);
         }
 
-        public Task<UserDTO> Get(Guid targetId, Guid currenUserId, UserRole currentUserRole)
+        public async Task<UserDTO> Get(Guid targetId, Guid currenUserId, UserRole currentUserRole)
         {
-            throw new NotImplementedException();
+            if (targetId == currenUserId || currentUserRole == UserRole.Owner || currentUserRole == UserRole.Admin)
+            {
+                User user = await _userGenericRepository.Get(u => u.Id == targetId)
+                    ?? throw new NotFoundException($"User with Id \"{targetId}\" does not exist.");
+                return new UserDTO(user);
+            }
+            else throw new UnauthorizedException("You are not authorized to access this information.");
         }
 
-        public Task<ICollection<UserDTO>> GetAllUsers()
+        public async Task<ICollection<UserDTO>> GetAllUsers()
         {
-            throw new NotImplementedException();
+            return (await _userGenericRepository.GetAll())
+                .Select(user => new UserDTO(user)
+                ).ToList();
         }
 
-        public Task UpdateUser(UpdateUserDTO dto, Guid currentUserId)
+        public Task<bool> UpdateUser(UpdateUserDTO dto, Guid currentUserId)
         {
             throw new NotImplementedException();
         }
