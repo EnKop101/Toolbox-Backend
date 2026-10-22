@@ -27,17 +27,18 @@ namespace Toolbox_Library.Services
         public async Task<string> AddSessionToDB(string sessionValue)
         {
             bool duplicateKey = true;
+            string sessionKey = "";
             string key = "";
             do
             {
-                string sessionKey = SessionIdGenerator();
+                sessionKey = SessionIdGenerator();
                 key = $"session:{sessionKey}";
                 duplicateKey = await ValidateSession(key);
             } while (duplicateKey);
 
             string encryptedValue = await _encryptionHandler.EncryptString(sessionValue);
             TimeSpan ttl = TimeSpan.FromDays(3);
-            if (await _redisRepository.AddSessionToDB(key, encryptedValue, ttl)) return key;
+            if (await _redisRepository.AddSessionToDB(key, encryptedValue, ttl)) return sessionKey;
             else throw new InternalErrorException("Something went wrong when trying to create session");
         }
 
