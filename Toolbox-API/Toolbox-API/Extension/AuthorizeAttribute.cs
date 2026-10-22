@@ -27,7 +27,7 @@ namespace Toolbox_API.Extension
         {
             // Try to get the session key from the cookies if the user has that cookie.
             string sessionKey = "";
-            context.HttpContext.Request.Cookies.TryGetValue("schoolsession", out string? sessionKeyFromCookie);
+            context.HttpContext.Request.Cookies.TryGetValue("toolbox-session", out string? sessionKeyFromCookie);
             if (!string.IsNullOrEmpty(sessionKeyFromCookie))
             {
                 try
@@ -58,7 +58,6 @@ namespace Toolbox_API.Extension
                     return;
                 }
             }
-            // If the user didn't have the cookie "schoolsession" then they aren't authenticated or authorized.
             context.Result = new UnauthorizedResult();
             return;
         }
